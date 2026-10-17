@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Weekly, for advisories published after a release (cargo-deny reads RustSec).
+  schedule:
+    - cron: "17 5 * * 1"
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+# Actions and the shared workflows are pinned to a commit (a tag can be moved); Dependabot keeps them current.
+jobs:
+  secrets:
+    uses: waldonso2/quality-kit/.github/workflows/secrets.yml@1f48e1012d9623dfe76432a893eb8348a6839655 # quality-kit before v1
+  workflows:
+    uses: waldonso2/quality-kit/.github/workflows/workflows.yml@1f48e1012d9623dfe76432a893eb8348a6839655 # quality-kit before v1
+  dependency-review:
+    uses: waldonso2/quality-kit/.github/workflows/dependency-review.yml@1f48e1012d9623dfe76432a893eb8348a6839655 # quality-kit before v1
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # rust-toolchain.toml names the toolchain and its components; rustup installs them on first use.
+      - run: rustup show active-toolchain
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets --locked -- -D warnings
+      - uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+        with:
+          tool: cargo-llvm-cov
+      # main.rs only reads and writes; the logic is in lib.rs.
+      - run: cargo llvm-cov --locked --ignore-filename-regex 'src/main\.rs' --fail-under-lines 90
+
+  deny:
+    # RustSec advisories, licences, bans and sources (deny.toml): blocking.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: taiki-e/install-action@8cca0918f8471c33515202b73f56ab27f2bed283 # v2.87.29
+        with:
+          tool: cargo-deny
+      - run: cargo deny --locked check
+
+  performance:
+    # Measured and reported on the run's summary page (KENNZAHLEN.md), never failing the build.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: cargo test --release --locked --test perf_report -- --ignored --nocapture
+        continue-on-error: true
