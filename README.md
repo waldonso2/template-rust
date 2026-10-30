@@ -23,3 +23,7 @@ cargo deny check
 cargo test --release --test perf_report -- --ignored --nocapture   # Performance-Bericht (perf-report.md)
 echo "ein text ein" | cargo run
 ```
+
+## Security baseline
+
+This template enforces the shared security-exception policy in CI. Keep `security-exceptions.json` as `[]` unless an explicitly approved, time-limited exception is required. See the [quality-kit security baseline](https://github.com/waldonso2/quality-kit/blob/main/SECURITY_BASELINE.md), [project checklist](https://github.com/waldonso2/quality-kit/blob/main/SECURITY_CHECKLIST.md), and [setup requirements](https://github.com/waldonso2/quality-kit/blob/main/SETUP.md). Configure `security-policy` as a required status check in the repository ruleset.
